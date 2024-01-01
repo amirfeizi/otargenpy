@@ -627,6 +627,11 @@ def indexVariantsAndStudiesForTagVariant(variant_id, pageindex=0, pagesize=20):
 # result = indexVariantsAndStudiesForTagVariant(variant_id="rs12740374", pageindex=1, pagesize=50)
 # print(result)
 
+def extract_score_from_list(lst):
+    if lst:
+        return lst[0]['score']
+    else:
+        return None
 
 def manhattan(study_id, pageindex=0, pagesize=100):
     print("Connecting to the Open Targets Genetics GraphQL API...")
@@ -697,6 +702,31 @@ def manhattan(study_id, pageindex=0, pagesize=100):
     if 'data' in response_json and 'manhattan' in response_json['data']:
         data = response_json['data']['manhattan']['associations']
         output = pd.json_normalize(data)
+
+        # Handle negative exponents in 'pvalExponent' column
+        output['pvalMantissa'] = output['pvalMantissa'] * 10**output['pvalExponent'].abs()
+
+        # Drop 'pvalExponent' column
+        output.drop(columns=['pvalExponent'], inplace=True)
+
+        # Flatten 'bestGenes' column
+        output['bestGenes_gene_id'] = output['bestGenes'].apply(lambda x: x[0]['gene']['id'] if x else None)
+        output['bestGenes_gene_symbol'] = output['bestGenes'].apply(lambda x: x[0]['gene']['symbol'] if x else None)
+        output['bestGenes_score'] = output['bestGenes'].apply(extract_score_from_list)
+
+        # Flatten 'bestColocGenes' column
+        output['bestColocGenes_gene_id'] = output['bestColocGenes'].apply(lambda x: x[0]['gene']['id'] if x else None)
+        output['bestColocGenes_gene_symbol'] = output['bestColocGenes'].apply(lambda x: x[0]['gene']['symbol'] if x else None)
+        output['bestColocGenes_score'] = output['bestColocGenes'].apply(extract_score_from_list)
+
+        # Flatten 'bestLocus2Genes' column
+        output['bestLocus2Genes_gene_id'] = output['bestLocus2Genes'].apply(lambda x: x[0]['gene']['id'] if x else None)
+        output['bestLocus2Genes_gene_symbol'] = output['bestLocus2Genes'].apply(lambda x: x[0]['gene']['symbol'] if x else None)
+        output['bestLocus2Genes_score'] = output['bestLocus2Genes'].apply(extract_score_from_list)
+
+        # Remove the original columns
+        output = output.drop(columns=['bestGenes', 'bestColocGenes', 'bestLocus2Genes'])
+
     else:
         print("No data found or error in response")
         output = pd.DataFrame()
