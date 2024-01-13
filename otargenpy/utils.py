@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-
 import seaborn as sns
 import pandas as pd
 import numpy as np
@@ -8,6 +7,7 @@ import string
 import matplotlib.patches as mpatches
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.colors import ListedColormap
+from fuzzywuzzy import fuzz
 
 
 def plot_coloc(data, biobank=False):
@@ -50,78 +50,88 @@ def plot_coloc(data, biobank=False):
 # Example usage
 # plot_coloc(res, biobank=True)
 
-
-
-def plot_l2g(data, disease_efo=None):
+def plot_l2g(data, efo_id=None):
     # Exclude irrelevant trait categories
+    
     exclude = ["phenotype", "measurement", "Uncategorised", "biological process"]
     data = data[~data['traitCategory'].isin(exclude)]
+    data_f = data[['symbol','traitReported',"traitEfos",'yProbaModel', 'yProbaDistance', 'yProbaInteraction',
+       'yProbaMolecularQTL', 'yProbaPathogenicity', 'pval']]
+    
+    data_f.columns = ['symbol','traitReported',"traitEfos",'L2G', 'Distance', 'Interaction',
+       'MolecularQTL', 'Pathogenicity', 'pval']
+    melted_df = pd.melt(data_f, id_vars=['symbol', 'traitReported', 'traitEfos', 'pval'], 
+                    value_vars=['L2G', 'Distance', 'Interaction', 'MolecularQTL', 'Pathogenicity'], 
+                    var_name='L2GMODEL', value_name='MODEL_SCORE')
+    # cleaning the trait terms
+    split_chars = r"[(,:|;]"
 
-    #Select relevant columns and rename them
-    df = data[['L2G', 'Distance', 'Interaction', 'mQTL', 'Pathogenicity', 'gene_symbol',
-              'traitReported', 'traitEfos',"traitReported" ,'pval']].copy()
+    melted_df["traitReported_trimmed"] = melted_df["traitReported"].str.split(split_chars).str[0]
+    melted_df["traitReported_trimmed"] = melted_df["traitReported_trimmed"].str.lower().str.strip()
 
 
-    if disease_efo is not None:
-        # Filter by disease EFO ID and select top-scoring gene for each trait
-        df = df[df['traitEfos'] == disease_efo]
-        df = df.groupby('gene_symbol').apply(lambda group: group[group['L2G'] == group['L2G'].max()])
-        df = df.reset_index(drop=True)
-        df_data = df.iloc[:, :6] # number of variable
-        
-        categories=list(df_data)[6:]
-        N = len(categories)
-        
-        # What will be the angle of each axis in the plot? (we divide the plot / number of variable)
-        angles = [n / float(N) * 2 * pi for n in range(N)]
-        angles += angles[:1]
-        
-        # Initialise the spider plot
-        ax = plt.subplot(111, polar=True)
-        
-        # If you want the first axis to be on top:
-        ax.set_theta_offset(pi / 2)
-        ax.set_theta_direction(-1)
-        
-        # Draw one axe per variable + add labels
-        plt.xticks(angles[:-1], categories)
-        
-        # Draw ylabels
-        ax.set_rlabel_position(0)
-        plt.yticks([10,20,30], ["10","20","30"], color="grey", size=7)
-        plt.ylim(0,40)
-        
 
-        # ------- PART 2: Add plots
-        
-        # Plot each individual = each line of the data
-        # I don't make a loop, because plotting more than 3 groups makes the chart unreadable
-        
-        # Ind1
-        values=df.loc[0].drop('group').values.flatten().tolist()
-        values += values[:1]
-        ax.plot(angles, values, linewidth=1, linestyle='solid', label="group A")
-        ax.fill(angles, values, 'b', alpha=0.1)
-        
-        # Ind2
-        values=df.loc[1].drop('group').values.flatten().tolist()
-        values += values[:1]
-        ax.plot(angles, values, linewidth=1, linestyle='solid', label="group B")
-        ax.fill(angles, values, 'r', alpha=0.1)
-        
-        # Add legend
-        plt.legend(loc='upper right', bbox_to_anchor=(0.1, 0.1))
+# Function to find the best match for a given string in a list of strings
+    def find_best_match(string, string_list):
+        best_match = None
+        best_ratio = -1
+        for s in string_list:
+            ratio = fuzz.ratio(string, s)
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_match = s
+        return best_match
 
-        # Show the graph
-        plt.show()
-                
+# Create a copy of the dataframe
+    collapsed_df = melted_df.copy()
 
-      
+# Iterate over each row in the dataframe
+    for index, row in collapsed_df.iterrows():
+    # Get the current disease name
+        current_disease = row['traitReported_trimmed']
+    
+    # Find the best match for the current disease in the remaining rows
+        remaining_rows = collapsed_df.loc[index+1:, 'traitReported_trimmed']
+        best_match = find_best_match(current_disease, remaining_rows)
+    
+    # Replace the current disease with the best match
+        collapsed_df.at[index, 'traitReported_trimmed'] = best_match
+    
+    # Replace the longer version with the shorter version
+        if best_match and len(best_match) < len(current_disease):
+            collapsed_df['traitReported_trimmed'] = collapsed_df['traitReported_trimmed'].replace(current_disease, best_match)
+
+
+
+    
+    
+    
+    if efo_id is None:
+
+        
+        df["rank"] = collapsed_df.groupby(["L2GMODEL", "traitReported_trimmed"])["MODEL_SCORE"].rank(ascending=False)
+        df_ft = df[df["rank"] == 1]
+        
+        collapsed_df = collapsed_df[collapsed_df["L2GMODEL"].isin(["L2G","Interaction","MolecularQTL"])]
+        p = sns.catplot(x="MODEL_SCORE", y="traitReported_trimmed", data=collapsed_df,
+                                kind="box", col="symbol", hue="L2GMODEL", col_wrap=2,
+                                palette="Set3", legend=True)
+        
+    else:
+        collapsed_df = collapsed_df[collapsed_df["traitEfos"].isin(efo_id)]
+        p = sns.catplot(x="MODEL_SCORE", y="L2GMODEL", data=collapsed_df,
+                                kind="box", col="symbol", hue="L2GMODEL", col_wrap=2,
+                                palette="Set3", legend=True)
+        
+    return p
+
 # Example usage:
 # plot = plot_l2g(data, disease_efo="EFO_0004339")
 # print(plot)
 
+
 def plot_manhattan(data):
+    
     # Extract relevant columns and rename them
     gwas_results = data[['variant.position', 'variant.chromosome', 'pval', 'variant.rsId']].copy()
     gwas_results = gwas_results.drop_duplicates()
@@ -160,6 +170,8 @@ def plot_manhattan(data):
     plt.show()
 # Example usage:
 # plot_manhattan(data)
+
+
 def plot_phewas(data, disease=True, source=["GCST", "FINNGEN", "NEALE", "SAIGE"]):
     # Prepare the data
     dt0 = data.copy()
@@ -207,7 +219,6 @@ def plot_phewas(data, disease=True, source=["GCST", "FINNGEN", "NEALE", "SAIGE"]
     plt.title("Phewas Plot")
     plt.tight_layout()
     plt.show()
-
 
 # Example usage:
 # plot_phewas(data)
