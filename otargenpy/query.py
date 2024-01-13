@@ -8,23 +8,61 @@ import requests
 import json
 import re
 
-def colocalisationsForGene(genes):
-    print("Connecting to the Open Targets Genetics GraphQL API...")
+def convert_symbol2ensembl(gene_ids):
+    # Define the GraphQL API endpoint
+    api_url = "https://api.genetics.opentargets.org/graphql"
 
-    # GraphQL query for gene name search and colocalisation data
+    # Initialize a GraphQL query
     query_search = """
-    query gene2ensembl($queryString:String!) {
-        search(queryString:$queryString){
-            genes{
-                id
-                symbol
-            }
+    query gene2ensembl($queryString: String!) {
+      search(queryString: $queryString) {
+        genes {
+          id
+          symbol
         }
-    }"""
+      }
+    }
+    """
 
-    query_colocal = """
-    query geneandcolocal($gene:String!) {
-      geneInfo (geneId:$gene) {
+    # Check format
+    match_result = [bool(re.match(r'ENSG\d{11}', gene)) for gene in gene_ids]
+    df_id = pd.DataFrame()
+
+    if all(match_result) is False:
+        for g in gene_ids:
+            variables = {"queryString": g}
+            response = requests.post(api_url, json={"query": query_search, "variables": variables})
+            data = response.json()
+
+            if "data" in data and "search" in data["data"]:
+                genes_data = data["data"]["search"]["genes"]
+                id_result = pd.DataFrame(genes_data)
+
+                if not id_result.empty:
+                    name_match = id_result[id_result["symbol"] == g]
+
+                    if not name_match.empty:
+                        ensembl_ids = name_match["id"].tolist()
+                        df_id = pd.concat([df_id, pd.DataFrame({"ensembl_ids": ensembl_ids})], ignore_index=True)
+
+        if df_id.empty:
+            raise ValueError("\nPlease provide Ensemble gene ID or gene name")
+        else:
+            ensembl_ids = df_id["ensembl_ids"].tolist()
+    else:
+        ensembl_ids = gene_ids
+
+    return ensembl_ids
+
+
+def colocalisationsForGene(genes):
+    # Define the GraphQL API endpoint
+    api_url = "https://api.genetics.opentargets.org/graphql"
+
+    # GraphQL query for colocalizations
+    query_coloc = """
+    query geneandcolocal($gene: String!) {
+      geneInfo(geneId: $gene) {
         id
         symbol
         description
@@ -32,15 +70,15 @@ def colocalisationsForGene(genes):
         start
         end
       }
-      colocalisationsForGene(geneId:$gene){
+
+      colocalisationsForGene(geneId: $gene) {
         leftVariant {
           id
           rsId
         }
         study {
           studyId
-          pmid
-          pubDate
+          traitReported
           pubJournal
           pubTitle
           pubAuthor
@@ -48,9 +86,9 @@ def colocalisationsForGene(genes):
           nInitial
           nReplication
           nCases
-          traitReported
-          traitCategory
           numAssocLoci
+          pubDate
+          pmid
         }
         tissue {
           name
@@ -61,57 +99,62 @@ def colocalisationsForGene(genes):
         log2h4h3
         qtlStudyId
       }
-    }"""
+    }
+    """
+    
+    coloc_final = pd.DataFrame()
+    ensembl_ids = convert_symbol2ensembl(genes)
+    for input_gene in ensembl_ids:
+        variables = {"gene": input_gene}
+        r = requests.post(api_url, json={"query": query_coloc, "variables": variables})
 
-    base_url = "https://api.genetics.opentargets.org/graphql"
+        query_output = json.loads(r.text)
 
-    ensembl_ids = []
-    for gene in genes:
-        if not gene.startswith("ENSG"):
-            response = requests.post(base_url, json={'query': query_search, 'variables': {'queryString': gene}})
-            data = json.loads(response.text)
-            gene_info = data['data']['search']['genes']
-            if gene_info:
-                matched_genes = [g for g in gene_info if g['symbol'] == gene]
-                ensembl_ids.extend([g['id'] for g in matched_genes])
-        else:
-            ensembl_ids.append(gene)
+        if query_output.get("data"):
+            gene_info = query_output["data"]["geneInfo"]
+            gene_info_df = pd.DataFrame([gene_info])
+            coloc_dt = query_output["data"]["colocalisationsForGene"]
+            coloc_keys = coloc_dt[0].keys()
 
-    if not ensembl_ids:
-        raise ValueError("Please provide Ensemble gene ID or gene name")
+            coloc_df = pd.DataFrame()
+            for el in coloc_dt:
+                coloc_row = pd.DataFrame()
+                for k in coloc_keys:
+                    if isinstance(el[k], dict):
+                        el_dt = el[k]  # dict
+                        k_df = pd.DataFrame([el_dt])
+                        coloc_row = pd.concat([coloc_row, k_df], axis=1)
+                    else:
+                        k_df = pd.DataFrame([{k: el[k]}])
+                        # Wrap non-dictionary data in a list to create a DataFrame
+                        coloc_row = pd.concat([coloc_row, k_df], axis=1)
 
-    all_colocal_data = pd.DataFrame()
-    for gene_id in ensembl_ids:
-        print(f"Downloading data for {gene_id} ...")
-        response = requests.post(base_url, json={'query': query_colocal, 'variables': {'gene': gene_id}})
-        data = json.loads(response.text)['data']
+                coloc_df = pd.concat([coloc_df, coloc_row], ignore_index=True)
 
-        # Check if 'geneInfo' is in the response
-        if 'geneInfo' in data:
-            gene_info = data['geneInfo']
-            colocal_data = data['colocalisationsForGene']
-            if colocal_data:
-                colocal_df = pd.DataFrame(colocal_data)
-                colocal_df = colocal_df.apply(lambda x: pd.Series(x.dropna().values[0]) if x.dtype == 'object' else x)
-                colocal_df['Gene_symbol'] = gene_info['symbol']
-                colocal_df['gene_id'] = gene_info['id']
-                all_colocal_data = pd.concat([all_colocal_data, colocal_df], ignore_index=True)
+            # Now coloc_df contains the flattened data in the desired format
+            g_info = pd.concat([gene_info_df] * len(coloc_df), ignore_index=True)
 
-    if not all_colocal_data.empty:
-        all_colocal_data = (all_colocal_data
-                            .rename(columns={'study.studyId': 'Study', 'study.traitReported': 'Trait_reported',
-                                             'leftVariant.id': 'Lead_variant', 'gene_symbol': 'Gene_symbol',
-                                             'tissue.name': 'Tissue', 'qtlStudyId': 'Source', 'h3': 'H3', 'h4': 'H4',
-                                             'log2h4h3': 'log2(H4/H3)', 'study.pubTitle': 'Title',
-                                             'study.pubAuthor': 'Author', 'study.hasSumstats': 'Has_sumstats',
-                                             'study.numAssocLoci': 'numAssocLoci', 'study.nInitial': 'nInitial_cohort',
-                                             'study.nReplication': 'study_nReplication', 'study.nCases': 'study_nCases',
-                                             'study.pubDate': 'Publication_date', 'study.pubJournal': 'Journal',
-                                             'study.pmid': 'Pubmed_id'})
-                            .sort_values(by='log2(H4/H3)', ascending=False)
-                            .reset_index(drop=True))
+            # Reset the index of coloc_df and g_info before concatenation
+            coloc_df.reset_index(drop=True, inplace=True)
+            g_info.reset_index(drop=True, inplace=True)
 
-    return all_colocal_data
+            # Concatenate coloc_df and g_info column-wise
+            coloc_all = pd.concat([coloc_df, g_info], axis=1)
+
+            # Reset the index of coloc_final before concatenation
+            coloc_final.reset_index(drop=True, inplace=True)
+
+            # Concatenate coloc_all with coloc_final
+            coloc_final = pd.concat([coloc_final, coloc_all], ignore_index=True)
+
+    # Now coloc_final should contain the final concatenated dataframe
+    coloc_final.columns = ['variant_id', 'rsId', 'studyId', 'traitReported', 'pubJournal', 'pubTitle',
+                       'pubAuthor', 'hasSumstats', 'nInitial', 'nReplication', 'nCases',
+                       'numAssocLoci', 'pubDate', 'pmid', 'tissue_name', 'phenotypeId', 'h3', 'h4',
+                       'log2h4h3', 'qtlStudyId', 'gene_id', 'symbol', 'description', 'chromosome',
+                       'start', 'end']
+
+    return coloc_final
 
 # Example usage
 # genes = ["ENSG00000163946", "ENSG00000169174", "ENSG00000143001"]
@@ -372,7 +415,6 @@ def gwasColocalisation(study_id, variant_id):
 # print(result)
 
 
-
 def gwasColocalisationForRegion(chromosome, start, end):
     # Validate input parameters
     if not chromosome or not start or not end:
@@ -441,7 +483,6 @@ def gwasColocalisationForRegion(chromosome, start, end):
 # print(result)
 
 
-
 def gwasCredibleSet(study_id, variant_id):
     print("Connecting to the Open Targets Genetics GraphQL API...")
 
@@ -506,6 +547,7 @@ def gwasCredibleSet(study_id, variant_id):
 # Example usage
 # result = query.gwasCredibleSet(study_id="GCST90002401", variant_id="9_90797195_C_A")
 # print(result)
+
 
 def gwasRegional(study_id, chromosome, start, end):
     print("Connecting to the Open Targets Genetics GraphQL API...")
@@ -627,11 +669,13 @@ def indexVariantsAndStudiesForTagVariant(variant_id, pageindex=0, pagesize=20):
 # result = indexVariantsAndStudiesForTagVariant(variant_id="rs12740374", pageindex=1, pagesize=50)
 # print(result)
 
+
 def extract_score_from_list(lst):
     if lst:
         return lst[0]['score']
     else:
         return None
+
 
 def manhattan(study_id, pageindex=0, pagesize=100):
     print("Connecting to the Open Targets Genetics GraphQL API...")
@@ -737,6 +781,7 @@ def manhattan(study_id, pageindex=0, pagesize=100):
 # result = manhattan(study_id="GCST90002357", pageindex=2, pagesize=50)
 # print(result)
 
+
 def overlapInfoForStudy(study_id, study_ids):
     if not study_id:
         print("Please provide a study ID.")
@@ -800,6 +845,7 @@ def overlapInfoForStudy(study_id, study_ids):
 # Example usage
 # result = overlapInfoForStudy(study_id="GCST90002357", study_ids=["GCST90025975", "GCST90025962"])
 # print(result)
+
 
 def pheWAS(variant_id):
     print("Connecting to the Open Targets Genetics GraphQL API...")
@@ -982,6 +1028,7 @@ def qtlCredibleSet(study_id, variant_id, gene, biofeature):
 # df = qtlCredibleSet(study_id, variant_id, gene, biofeature)
 # print(df)
 
+
 def run_custom_query(variable_list, query, query_name):
     # Define the GraphQL endpoint URL
     url = "https://api.genetics.opentargets.org/graphql"
@@ -1024,56 +1071,39 @@ def run_custom_query(variable_list, query, query_name):
 # result = run_custom_query(variable_list, query, query_name)
 # print(result)
 
-
-
-def studiesAndLeadVariantsForGeneByL2G(gene, l2g=None, pvalue=None, vtype=None):
+def studiesAndLeadVariantsForGeneByL2G(genes, l2g=None, pvalue=None, vtype=None):
     # Define the GraphQL endpoint URL
-    url = "https://api.genetics.opentargets.org/graphql"
+    api_url = "https://api.genetics.opentargets.org/graphql"
 
-    # Define the GraphQL request headers
-    headers = {
-        "Content-Type": "application/json"
-    }
-
-    # Check if 'gene' argument is a list
-    if isinstance(gene, list):
-        gene_list = gene
-    else:
-        gene_list = [gene]
-
-    results = []
-
-    for gene_id in gene_list:
-        # Define the GraphQL query
-        query = f"""
-        query {{
-            geneInfo(geneId: "{gene_id}") {{
+    l2g_query = """
+         query geneandl2g($gene_id: String!) {
+            geneInfo(geneId: $gene_id ) {
                 id
                 symbol
                 description
                 chromosome
                 start
                 end
-            }}
-            studiesAndLeadVariantsForGeneByL2G(geneId: "{gene_id}") {{
+            }
+            studiesAndLeadVariantsForGeneByL2G(geneId: $gene_id) {
                 yProbaModel
                 yProbaDistance
                 yProbaInteraction
                 yProbaMolecularQTL
                 yProbaPathogenicity
                 pval
-                beta {{
+                beta {
                     direction
                     betaCI
                     betaCILower
                     betaCIUpper
-                }}
-                odds {{
+                }
+                odds {
                     oddsCI
                     oddsCILower
                     oddsCIUpper
-                }}
-                study {{
+                }
+                study {
                     studyId
                     traitReported
                     traitCategory
@@ -1087,96 +1117,103 @@ def studiesAndLeadVariantsForGeneByL2G(gene, l2g=None, pvalue=None, vtype=None):
                     numAssocLoci
                     nTotal
                     traitEfos
-                }}
-                variant {{
+                }
+                variant {
                     id
                     rsId
                     chromosome
                     position
                     refAllele
                     altAllele
-                    nearestGene {{
+                    nearestGene {
                         id
-                    }}
-                    nearestCodingGene {{
+                    }
+                    nearestCodingGene {
                         id
-                    }}
+                    }
                     nearestCodingGeneDistance
                     nearestGeneDistance
                     mostSevereConsequence
-                }}
-            }}
-        }}
-        """
-
-        # Define the GraphQL request payload
-        payload = {
-            "query": query
+                }
+            }
         }
+        """
+    
+    # Check if 'gene' argument is a list
+    if isinstance(genes, list):
+        gene_list = genes
+    else:
+        gene_list = [genes]
+        
+    #print(gene_list)
+    l2g_final = pd.DataFrame()
+    ensembl_ids = convert_symbol2ensembl(gene_list)
+    
+    #print(ensembl_ids)
+    for input_gene in ensembl_ids:
+        variables = {"gene_id": input_gene}
+        r = requests.post(api_url, json={"query": l2g_query, "variables": variables})
 
-        try:
-            # Send the GraphQL query
-            response = requests.post(url, json=payload, headers=headers)
+        query_output = json.loads(r.text)
 
-            # Check if the request was successful
-            if response.status_code == 200:
-                data = response.json()["data"]
+        if query_output.get("data"):
+            gene_info = query_output["data"]["geneInfo"]
+            gene_info_df = pd.DataFrame([gene_info])
+           # print(gene_info_df)
+            l2g_dt = query_output["data"]["studiesAndLeadVariantsForGeneByL2G"]
+            l2g_keys = l2g_dt[0].keys()
+            #print(l2g_keys)
 
-                # Filter results based on parameters
-                if l2g is not None:
-                    data["studiesAndLeadVariantsForGeneByL2G"] = [item for item in data["studiesAndLeadVariantsForGeneByL2G"] if item["yProbaModel"] >= l2g]
+            l2g_df = pd.DataFrame()
+            for el in l2g_dt:
+                l2g_row = pd.DataFrame()
+                for k in l2g_keys:
+                    if isinstance(el[k], dict):
+                        el_dt = el[k]  # dict
+                        k_df = pd.DataFrame([el_dt])
+                        l2g_row = pd.concat([l2g_row, k_df], axis=1)
+                    else:
+                        k_df = pd.DataFrame([{k: el[k]}])
+                        # Wrap non-dictionary data in a list to create a DataFrame
+                        l2g_row = pd.concat([l2g_row, k_df], axis=1)
 
-                if pvalue is not None:
-                    data["studiesAndLeadVariantsForGeneByL2G"] = [item for item in data["studiesAndLeadVariantsForGeneByL2G"] if item["pval"] <= pvalue]
+                l2g_df = pd.concat([l2g_df, l2g_row], ignore_index=True)
+                #print(l2g_df.head())
 
-                if vtype is not None:
-                    data["studiesAndLeadVariantsForGeneByL2G"] = [item for item in data["studiesAndLeadVariantsForGeneByL2G"] if item["variant"]["mostSevereConsequence"] in vtype]
+            # Now coloc_df contains the flattened data in the desired format
+            g_info = pd.concat([gene_info_df] * len(l2g_df), ignore_index=True)
 
-                results.append(data)
+            # Reset the index of coloc_df and g_info before concatenation
+            l2g_df.reset_index(drop=True, inplace=True)
+            g_info.reset_index(drop=True, inplace=True)
 
-            else:
-                print(f"Error: {response.status_code}")
-                results.append(None)
+            # Concatenate coloc_df and g_info column-wise
+            l2g_all = pd.concat([l2g_df, g_info], axis=1)
 
-        except requests.exceptions.RequestException as e:
-            # Handle connection timeout and other errors
-            if "Timeout was reached" in str(e):
-                print("Connection timeout reached while connecting to the Open Targets Genetics GraphQL API.")
-            else:
-                print(f"Error: {str(e)}")
-            results.append(None)
+            # Reset the index of coloc_final before concatenation
+            l2g_all.reset_index(drop=True, inplace=True)
 
-    # Flatten the results and create a DataFrame
-    flattened_results = []
-    for result in results:
-        if result:
-            flattened_result = result["studiesAndLeadVariantsForGeneByL2G"]
-            flattened_results.extend(flattened_result)
+            # Concatenate coloc_all with coloc_final
+            l2g_final = pd.concat([l2g_final, l2g_all], ignore_index=True)
+            l2g_final.columns = ['L2G', 'Distance', 'Interaction',
+       'MolecularQTL', 'Pathogenicity', 'pval', 'direction',
+       'betaCI', 'betaCILower', 'betaCIUpper', 'oddsCI', 'oddsCILower',
+       'oddsCIUpper', 'studyId', 'traitReported', 'traitCategory', 'pubDate',
+       'pubTitle', 'pubAuthor', 'pubJournal', 'pmid', 'hasSumstats', 'nCases',
+       'numAssocLoci', 'nTotal', 'traitEfos', 'variant_id', 'rsId', 'chromosome',
+       'position', 'refAllele', 'altAllele', 'nearestGene',
+       'nearestCodingGene', 'nearestCodingGeneDistance', 'nearestGeneDistance',
+       'mostSevereConsequence', 'ensemble_id', 'gene_symbol', 'description', 'chromosome',
+       'start', 'end']
 
-    df = pd.DataFrame(flattened_results)
 
-    # Split the 'variant' column
-    variant_df = pd.json_normalize(df['variant'])
-    variant_df.rename(columns={'id': 'variant_id', 'rsId': 'variant_rsId'}, inplace=True)
 
-    # Split the 'study' column and create new columns
-    study_df = pd.json_normalize(df['study'])
-    study_df.columns = [f'study_{col}' for col in study_df.columns]
-
-    # Remove the 'variant' and 'study' columns
-    df = df.drop(columns=['variant', 'study'])
-
-    # Concatenate the new columns to the DataFrame
-    df = pd.concat([variant_df, study_df, df], axis=1)
-
-    return df
+    return l2g_final
 
 # Example usage:
 # gene_list = ["ENSG00000163946", "ENSG00000169174", "ENSG00000143001"]
 # result = studiesAndLeadVariantsForGeneByL2G(gene_list, l2g=0.7)
 # print(result)
-
-
 
 def studyInfo(study_id):
     # Define the GraphQL endpoint URL
@@ -1256,7 +1293,6 @@ def studyInfo(study_id):
 # result = studyInfo(study_id)
 # if result is not None:
 #     print(result)
-
 
 
 def studyLocus2GeneTable(study_id, variant_id):
@@ -1383,7 +1419,6 @@ def studyLocus2GeneTable(study_id, variant_id):
 # result = studyLocus2GeneTable(study_id, variant_id)
 # if result is not None:
 #     print(result)
-
 
 def studyVariants(study_id):
     # Define the GraphQL endpoint URL
