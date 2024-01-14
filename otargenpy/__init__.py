@@ -8,4 +8,4 @@ __author__ = """Amir Feizi"""
 __email__ = 'afeizi@gmail.com'
 __version__ = '0.1.0'
 
-from .query import colocalisationsForGene
+from . import query, utils
