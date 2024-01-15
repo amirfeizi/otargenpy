@@ -8,34 +8,37 @@ from matplotlib.ticker import ScalarFormatter
 from matplotlib.colors import ListedColormap
 from fuzzywuzzy import fuzz
 
-
 def plot_coloc(data, biobank=False):
-    # Filter data if biobank is True
+    """
+    Plot colocalization analysis based on the provided data.
+
+    Parameters
+    ----------
+    data : DataFrame
+        A pandas DataFrame containing colocalization analysis data.
+    biobank : bool, optional
+        If True, filters the data to include only studies starting with 'GCST', by default False.
+
+    Notes
+    -----
+    The function requires 'matplotlib' and 'seaborn' libraries for plotting.
+    """
     if biobank:
         data = data[data['studyId'].str.startswith('GCST')]
 
-    # Trim 'traitReported' if they have more than 35 characters
-    data.loc[:, 'traitReported'] = data['traitReported'].apply(lambda x: x[:35] if len(x) > 35 else x)
+    data['traitReported'] = data['traitReported'].apply(lambda x: x[:35] if len(x) > 35 else x)
+    data.drop_duplicates(subset=['studyId', 'variant_id', 'gene_id'], inplace=True)
 
-    # Remove duplicated rows for 'studyId', 'variant_id', 'gene_id' combination
-    data = data.drop_duplicates(subset=['studyId', 'variant_id', 'gene_id'])
-
-    # Group by 'gene_id' and 'variant_id', and sort by 'log2h4h3'
     data_sorted = data.groupby(['gene_id', 'variant_id']).apply(lambda x: x.nlargest(3, 'log2h4h3')).reset_index(drop=True)
-
-    # Select rows with 'log2h4h3' > 7
     data_sorted = data_sorted[data_sorted['log2h4h3'] > 7]
 
-    # Create a categorical color palette based on unique 'studyId' values
     color_palette = sns.color_palette("husl", len(data_sorted['studyId'].unique()))
     color_mapping = {study: color for study, color in zip(data_sorted['studyId'].unique(), color_palette)}
     data_sorted['color'] = data_sorted['studyId'].map(color_mapping)
 
-    # Create the barplot
     plt.figure(figsize=(10, 6))
     bars = plt.barh(data_sorted['traitReported'], data_sorted['log2h4h3'], color=data_sorted['color'], alpha=0.7)
 
-    # Add 'rsId' as text on each corresponding bar
     for bar, rsId in zip(bars, data_sorted['rsId']):
         plt.text(bar.get_width() + 0.1, bar.get_y() + bar.get_height() / 2, rsId, ha='left', va='center')
 
@@ -43,15 +46,29 @@ def plot_coloc(data, biobank=False):
     plt.ylabel('Trait Reported')
     plt.title('Colocalization Analysis')
     plt.grid(axis='x', linestyle='--', alpha=0.6)
-
     plt.show()
 
-# Example usage
-# plot_coloc(res, biobank=True)
-
 def plot_l2g(data, efo_id=None):
+    """
+    Plot Locus-to-Gene (L2G) modeling results based on the provided data.
+
+    Parameters
+    ----------
+    data : DataFrame
+        A pandas DataFrame containing L2G modeling data.
+    efo_id : str or list, optional
+        EFO (Experimental Factor Ontology) ID(s) to filter the data, default is None.
+
+    Returns
+    -------
+    Seaborn axis-level plot
+        A seaborn plot object representing the L2G data.
+
+    Notes
+    -----
+    The function modifies column names and performs data transformation for plotting.
+    """
     # Exclude irrelevant trait categories
-    
     exclude = ["phenotype", "measurement", "Uncategorised", "biological process"]
     data = data[~data['traitCategory'].isin(exclude)]
     data_f = data[['symbol','traitReported',"traitEfos",'yProbaModel', 'yProbaDistance', 'yProbaInteraction',
@@ -100,11 +117,6 @@ def plot_l2g(data, efo_id=None):
         if best_match and len(best_match) < len(current_disease):
             collapsed_df['traitReported_trimmed'] = collapsed_df['traitReported_trimmed'].replace(current_disease, best_match)
 
-
-
-    
-    
-    
     if efo_id is None:
 
         
@@ -124,35 +136,42 @@ def plot_l2g(data, efo_id=None):
         
     return p
 
-# Example usage:
-# plot = plot_l2g(data, disease_efo="EFO_0004339")
-# print(plot)
-
-
 def plot_manhattan(data):
-    
+    """
+    Generate a Manhattan plot from GWAS results.
+
+    Parameters
+    ----------
+    data : DataFrame
+        A pandas DataFrame containing GWAS results with columns for variant position, chromosome, p-value, and rsID.
+
+    Notes
+    -----
+    This function requires 'pandas', 'numpy', 'matplotlib', and 'seaborn' libraries.
+    It creates a Manhattan plot to visualize GWAS results, highlighting significant SNPs.
+    """
     # Extract relevant columns and rename them
     gwas_results = data[['variant.position', 'variant.chromosome', 'pval', 'variant.rsId']].copy()
     gwas_results = gwas_results.drop_duplicates()
 
     # Simulate DataFrame
     df = pd.DataFrame({
-        'rsid': gwas_results["variant.rsId"],
-        'chrom': gwas_results['variant.chromosome'],
-        'pos': gwas_results['variant.position'],
-        'pval': gwas_results['pval']
-    })
+        'rsid': data["variant.rsId"],
+        'chrom': data['variant.chromosome'],
+        'pos': data['variant.position'],
+        'pval': data['pval']
+    }).drop_duplicates()
+    # Calculate -log10 of p-values
     df['-logp'] = -np.log10(df.pval)
-    df = df.sort_values(['chrom', 'pos'])
+    df.sort_values(['chrom', 'pos'], inplace=True)
     df.reset_index(inplace=True, drop=True)
     df['i'] = df.index
-
     # Calculate significance cutoff for each chromosome
     df['p_cutoff'] = df.groupby('chrom')['pval'].transform(lambda x: x.quantile(0.05))  # Adjust quantile as needed
 
     # Generate Manhattan plot: (#optional tweaks for relplot: linewidth=0, s=9)
     plot = sns.relplot(data=df, x='i', y='-logp', aspect=3.7,
-            hue='chrom', palette='bright', legend=None)
+                       hue='chrom', palette='bright', legend=None)
     chrom_df = df.groupby('chrom')['i'].median()
     plot.ax.set_xlabel('chrom')
     plot.ax.set_xticks(chrom_df)
@@ -167,11 +186,25 @@ def plot_manhattan(data):
                 textcoords="offset points", xytext=(0, 10), ha='center')
 
     plt.show()
-# Example usage:
-# plot_manhattan(data)
-
 
 def plot_phewas(data, disease=True, source=["GCST", "FINNGEN", "NEALE", "SAIGE"]):
+    """
+    Generate a PheWAS (Phenome-Wide Association Study) plot from the given dataset.
+
+    Parameters
+    ----------
+    data : DataFrame
+        A pandas DataFrame containing PheWAS results with columns for study traits, beta values, p-values, and sources.
+    disease : bool, optional
+        If True, filters the data to include only disease-related traits; otherwise, includes other traits. Default is True.
+    source : list of str, optional
+        List of sources to include in the plot. Default is ["GCST", "FINNGEN", "NEALE", "SAIGE"].
+
+    Notes
+    -----
+    The function requires 'pandas', 'numpy', 'matplotlib', and 'seaborn' libraries.
+    It creates a scatter plot to visualize PheWAS results.
+    """
     # Prepare the data
     dt0 = data.copy()
     dt0['traitCategory'] = dt0['study.traitCategory'].str.lower()
@@ -184,40 +217,66 @@ def plot_phewas(data, disease=True, source=["GCST", "FINNGEN", "NEALE", "SAIGE"]
             (dt0['study.source'].isin(source)) &
             (~dt0['traitCategory'].isin(["measurement", "phenotype", "biological process", "uncategorized"]))
         ].copy()
-        dt2['beta_shape'] = np.where(dt2['beta'] > 0, "positive", "negative")
+        dt2['beta_direction'] = dt2['beta'].apply(lambda x: 'positive' if x > 0 else ('negative' if x < 0 else 'no information'))
     else:
         dt2 = dt0[
             (dt0['study.source'].isin(source)) &
             (dt0['traitCategory'].isin(["measurement", "phenotype", "biological process", "uncategorized"]))
         ].copy()
-        dt2['beta_shape'] = np.where(dt2['beta'] > 0, "positive", "negative")
+        dt2['beta_direction'] = dt2['beta'].apply(lambda x: 'positive' if x > 0 else ('negative' if x < 0 else 'no information'))
 
     # Create a dictionary to map sources to colors
     source_colors = {"NEALE": "red", "SAIGE": "blue", "FINNGEN": "green", "GCST": "purple"}
-
-    # Map source names to colors
     dt2['source_color'] = dt2['study.source'].map(source_colors)
 
+        # Define custom markers
+    custom_markers = {
+        'positive': '^',  # Triangle up for positive
+        'negative': 'v',  # Triangle down for negative
+        'no information': 'o'  # Circle for no information
+    }
+
+  
+    # Set Seaborn style for a modern look
+    sns.set(style="whitegrid", context="talk", palette="muted")
+
     # Create the plot
-    plt.figure(figsize=(10, 6))
-    scatter = plt.scatter(
-        x=dt2['traitCategory'],
+    plt.figure(figsize=(14, 8))
+    scatter = sns.scatterplot(
+        x='traitCategory',
         y=-np.log10(dt2['pval']),
-        c=dt2['source_color'],  # Use the mapped source colors
-        s=50,
-        alpha=0.5
+        hue='beta_direction',
+        style='beta_direction',
+        data=dt2,
+        markers=custom_markers,
+        s=100,  # Size of the dots
+        alpha=0.7,  # Transparency of the dots
+        edgecolor="w",  # White edges for the markers
+        linewidth=0.5  # Edge line width
     )
 
-    handles = [mpatches.Patch(color=color, label=source) for source, color in source_colors.items()]
+    # Calculate the 75th percentile of -log10(pval) for each category
+    percentile_75 = dt2.groupby('traitCategory')['pval'].apply(lambda x: np.percentile(-np.log10(x), 75))
 
-    plt.legend(handles=handles, title="Data source", loc="upper right", bbox_to_anchor=(1.0, 1.0))
-    plt.axhline(y=5, color="grey", linestyle='--')
-    plt.xlabel("")
-    plt.ylabel("-log10(pval)")
-    plt.xticks(rotation=45, ha="right")
-    plt.title("Phewas Plot")
+    # Add text to points above the 75th percentile in each category
+    for index, row in dt2.iterrows():
+        category_75th_percentile = percentile_75[row['traitCategory']]
+        if -np.log10(row['pval']) > category_75th_percentile:
+            label = row['study.traitReported'][:30]  # Trim the text to 15 characters
+            plt.text(row['traitCategory'], -np.log10(row['pval']), label, ha='center', va='bottom', fontsize=8)
+
+    # p-value threshold (e.g., p=0.05, -log10(p) = 1.3)
+    pvalue_threshold = 0.05
+    threshold_line = -np.log10(pvalue_threshold)
+    plt.axhline(y=threshold_line, color="grey", linestyle='--', linewidth=1.5)
+
+    # Improve the aesthetics
+    plt.xticks(rotation=45, ha='right')
+    plt.xlabel('Trait Category')
+    plt.ylabel('-log10(pval)')
+    plt.title('PheWAS Plot')
+    plt.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
+    plt.legend(title='Beta Direction', bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
-    plt.show()
 
-# Example usage:
-# plot_phewas(data)
+    plt.show()

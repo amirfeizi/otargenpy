@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import requests
 import json
 import pandas as pd
@@ -779,6 +778,85 @@ def extract_score_from_list(lst):
     else:
         return None
 
+def get_phewas(variant_id):
+    """
+    Perform a Phenome-Wide Association Study (PheWAS) for a given variant ID using the Open Targets Genetics GraphQL API.
+
+    Parameters
+    ----------
+    variant_id : str
+        The variant identifier, either in rsID format (e.g., "rs12345") or genomic location format (e.g., "1_55053079_C_T").
+
+    Returns
+    -------
+    DataFrame
+        A pandas DataFrame with PheWAS results including p-values, beta values,
+    Raises
+    ------
+    ValueError
+        If the variant ID format is invalid or if the request to the API fails.
+
+    Notes
+    -----
+    The function requires 'requests' and 'pandas' libraries, and an active internet connection to access the Open Targets Genetics API.
+"""
+    url = "https://api.genetics.opentargets.org/graphql"
+
+    # Check variant ID format and convert rsID to variant ID if necessary
+    if re.match(r"rs\d+", variant_id):
+        query_searchid = """
+        query ConvertRSIDtoVID($queryString: String!) {
+            search(queryString: $queryString) {
+                totalVariants
+                variants {
+                    id
+                }
+            }
+        }"""
+        variables = {"queryString": variant_id}
+        response = requests.post(url, json={'query': query_searchid, 'variables': variables})
+        data = response.json()
+        input_variant_id = data['data']['search']['variants'][0]['id']
+    elif re.match(r"\d+_\d+_[a-zA-Z]+_[a-zA-Z]+", variant_id):
+        input_variant_id = variant_id
+    else:
+        raise ValueError("Please provide a valid variant ID")
+    
+    # PheWAS query
+    query = """
+    query search($variantId: String!) {
+      pheWAS(variantId: $variantId) {
+        totalGWASStudies
+        associations {
+          pval
+          beta
+          oddsRatio
+          study {
+            studyId
+            source
+            pmid
+            pubDate
+            traitReported
+            traitCategory
+          }
+          nTotal
+        }
+      }
+    }"""
+    variables = {"variantId": input_variant_id}
+    response = requests.post(url, json={'query': query, 'variables': variables})
+
+    if response.status_code == 200:
+        data = response.json()['data']['pheWAS']
+        if len(data['associations']) != 0:
+            result_df = pd.json_normalize(data, 'associations')
+            return(result_df)
+        else:
+            result_df = pd.DataFrame()
+            return result_df
+    else:
+        raise ValueError(f"Error in API request: {response.status_code}") 
+
 def fetch_manhattan_data(study_id, page_index=0, page_size=100):
     """
     Retrieve Manhattan plot data from the Open Targets Genetics GraphQL API.
@@ -815,8 +893,8 @@ def fetch_manhattan_data(study_id, page_index=0, page_size=100):
     The function requires an active internet connection to access the Open Targets Genetics API.
     It depends on the 'requests' and 'pandas' libraries.
     """
-    
     base_url = "https://api.genetics.opentargets.org/graphql"
+    
     query = """
     query manhattanquery($studyId: String!, $pageIndex: Int!, $pageSize: Int!) {
         manhattan(studyId: $studyId, pageIndex: $pageIndex, pageSize: $pageSize) {
@@ -1845,7 +1923,7 @@ def get_variant_info(variant_id):
     Examples
     --------
     >>> variant_id = "1_109274968_G_T"
-    >>> result = variantInfo(variant_id)
+    >>> result = get_variant_info(variant_id)
     >>> if result is not None:
     >>>     print("Variant Information DataFrame:")
     >>>     print(result)
