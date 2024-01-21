@@ -40,11 +40,15 @@ Installation
 -------
 Get started with `otargenpy` from PyPI:
 
-`pip install otargenpy`
+```
+pip install otargenpy
+```
 
 Or install the latest development version from GitHub:
 
-`pip install git+https://github.com/amirfeizi/otargenpy.git`
+```
+pip install git+https://github.com/amirfeizi/otargenpy.git
+```
 
 Citing otargen
 ------
