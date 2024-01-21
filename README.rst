@@ -26,6 +26,7 @@ Features
 📖 **Comprehensive Documentation**: Each function is thoroughly documented, ensuring a smooth integration into your workflow and a clear understanding of the results.
 
 👨‍💻 **Regular Updates**: Stay abreast of the latest in Open Target Genetics with our commitment to continuous improvement and feature expansion.
+
 Installation
 ------------
 
