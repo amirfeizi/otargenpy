@@ -47,8 +47,8 @@ Or install the latest development version from GitHub:
     pip install git+https://github.com/amirfeizi/otargenpy.git
 
 If the above code block does not render, use:
-
-pip install git+https://github.com/amirfeizi/otargenpy.git
+.. code-block:: bash
+    pip install git+https://github.com/amirfeizi/otargenpy.git
 
 Citing otargenpy
 ----------------
