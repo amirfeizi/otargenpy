@@ -22,13 +22,13 @@ handling and visualization tools.
 Features
 --------
 
-🚀**Effortless Data Retrieval**: Access comprehensive GraphQL query types with user-friendly functions, transforming complex queries into tidy, analysis-ready data tables.
+🚀 **Effortless Data Retrieval**: Access comprehensive GraphQL query types with user-friendly functions, transforming complex queries into tidy, analysis-ready data tables.
 
-📈**Insightful Visualizations**: Deploy intuitive plotting functions for a clear view of complex datasets, uncovering hidden patterns and insights.
+📈 **Insightful Visualizations**: Deploy intuitive plotting functions for a clear view of complex datasets, uncovering hidden patterns and insights.
 
-📖**Comprehensive Documentation**: Each function is thoroughly documented, ensuring a smooth integration into your workflow and a clear understanding of the results.
+📖 **Comprehensive Documentation**: Each function is thoroughly documented, ensuring a smooth integration into your workflow and a clear understanding of the results.
 
-👨‍💻**Regular Updates**: Stay abreast of the latest in Open Target Genetics with our commitment to continuous improvement and feature expansion.
+👨‍💻 **Regular Updates**: Stay abreast of the latest in Open Target Genetics with our commitment to continuous improvement and feature expansion.
 
 
 * TODO
