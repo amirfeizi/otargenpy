@@ -86,7 +86,7 @@ def convert_symbol2ensembl(gene_ids):
 
     return ensembl_ids
 
-def get_gene_colocs(genes):
+def fetch_gene_colocs(genes):
     """
     This function performs the same query as `colocalisationsForGene` from the OTG's GraphQL schema. It retrieve colocalisation data for a list of genes using the Open Targets Genetics GraphQL API.
 
@@ -778,7 +778,7 @@ def extract_score_from_list(lst):
     else:
         return None
 
-def get_phewas(variant_id):
+def fetch_phewas(variant_id):
     """
     Perform a Phenome-Wide Association Study (PheWAS) for a given variant ID using the Open Targets Genetics GraphQL API.
 
@@ -1899,7 +1899,7 @@ def fetch_top_overlapping_studies(study_id, page_index=0, page_size=20):
     except requests.exceptions.RequestException as e:
         raise ConnectionError(f"Connection error: {str(e)}")
 
-def get_variant_info(variant_id):
+def fetch_variant_info(variant_id):
     """
     Retrieve detailed information for a specific variant from the Open Targets Genetics GraphQL API.
 
@@ -1923,7 +1923,7 @@ def get_variant_info(variant_id):
     Examples
     --------
     >>> variant_id = "1_109274968_G_T"
-    >>> result = get_variant_info(variant_id)
+    >>> result = fetch_variant_info(variant_id)
     >>> if result is not None:
     >>>     print("Variant Information DataFrame:")
     >>>     print(result)
