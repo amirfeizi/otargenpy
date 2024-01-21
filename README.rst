@@ -31,23 +31,21 @@ Features
 👨‍💻 **Regular Updates**: Stay abreast of the latest in Open Target Genetics with our commitment to continuous improvement and feature expansion.
 
 
-* TODO
+TODO
+-------
+Coming soon..
 
 
 Installation
 -------
 Get started with `otargenpy` from PyPI:
-```bash
-pip install otargenpy
-
 ```
-
+pip install otargenpy
+```
 Or install the latest development version from GitHub:
-
 ```
 pip install git+https://github.com/amirfeizi/otargenpy.git
 ```
-
 Citing otargen
 ------
 
@@ -58,8 +56,6 @@ Contributing
 -------
 Join the otargenpy community on GitHub and contribute to its improvement.
 We welcome bug reports, feature suggestions, and code contributions.
-
-
 
 * Free software: MIT license
 * Documentation: https://otargenpy.readthedocs.io.
