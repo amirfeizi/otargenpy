@@ -13,10 +13,8 @@ otargenpy
         :target: https://otargenpy.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
-`otargenpy` is an open-source python package for easy data retrieval and analysis 
-from [Open Target Genetics](https://genetics.opentargets.org).
-It brings simplicity and power to your python environment, enhancing your research with advanced data
-handling and visualization tools.
+`otargenpy` is an open-source Python package for easy data retrieval and analysis from [Open Target Genetics](https://genetics.opentargets.org). It brings simplicity and power to your Python environment, enhancing your research with advanced data handling and visualization tools.
+
 
 
 Features
