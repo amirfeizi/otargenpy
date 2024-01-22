@@ -10,7 +10,15 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = [ ]
+requirements = [
+    'requests',
+    'pandas',
+    'matplotlib',
+    'seaborn',
+    'numpy',
+    'fuzzywuzzy',
+    # Optionally include 'python-Levenshtein' if you want to speed up fuzzywuzzy
+]
 
 test_requirements = ['pytest>=3', ]
 
@@ -38,7 +46,7 @@ setup(
     packages=find_packages(include=['otargenpy', 'otargenpy.*']),
     test_suite='tests',
     tests_require=test_requirements,
-    url='https://github.com/amir.feizi/otargenpy',
+    url='https://github.com/amirfeizi/otargenpy',
     version='0.1.0',
     zip_safe=False,
 )
