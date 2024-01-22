@@ -28,7 +28,9 @@ Features
 👨‍💻 **Regular Updates**: Stay abreast of the latest in Open Target Genetics with our commitment to continuous improvement and feature expansion.
 
 
-* TODO
+TODO
+-----
+Comming soon..
 
 
 Installation
