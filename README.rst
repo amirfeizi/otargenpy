@@ -25,7 +25,12 @@ Features
 
 📖 **Comprehensive Documentation**: Each function is thoroughly documented, ensuring a smooth integration into your workflow and a clear understanding of the results.
 
-👨‍💻 **Regular Updates**: Stay abreast of the latest in Open Target Genetics with our commitment to continuous improvement and feature expansion.
+👨‍💻**Regular Updates**: Stay abreast of the latest in Open Target Genetics with our commitment to continuous improvement and feature expansion.
+
+
+* TODO
+
+
 Installation
 ------------
 
@@ -45,9 +50,6 @@ Or install the latest development version from GitHub:
 
     pip install git+https://github.com/amirfeizi/otargenpy.git
 
-If the above code block does not render, use:
-
-pip install git+https://github.com/amirfeizi/otargenpy.git
 
 Citing otargenpy
 ----------------
