@@ -12,7 +12,7 @@ otargenpy
     :alt: Documentation Status
 
 `otargenpy` is an open-source Python package built for seamless data retrieval and analysis 
-from `Open Target Genetics <https://genetics.opentargets.org>`_ using the GraphQL API.
+from `Open Target Genetics <https://genetics.opentargets.org>`_ using its GraphQL API end point.
 
 
 Features
