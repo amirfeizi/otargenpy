@@ -44,6 +44,7 @@ setup(
     keywords='otargenpy',
     name='otargenpy',
     packages=find_packages(include=['otargenpy', 'otargenpy.*']),
+    package_data={'otargenpy': ['docs/*']},
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/amirfeizi/otargenpy',
