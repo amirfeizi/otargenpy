@@ -9,6 +9,6 @@ API(<https://genetics.opentargets.org/api>).
 
 __author__ = """Amir Feizi"""
 __email__ = "afeizi@gmail.com"
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 from . import query, utils
