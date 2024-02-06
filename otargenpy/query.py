@@ -105,7 +105,6 @@ def convert_symbol2ensembl(gene_ids):
 
     return ensembl_ids
 
-
 def fetch_gene_colocs(genes):
     """This function performs the same query as `colocalisationsForGene` from
     the OTG's GraphQL schema. It retrieve colocalisation data for a list of
@@ -274,7 +273,6 @@ def fetch_gene_colocs(genes):
 
     return coloc_final
 
-
 def fetch_gene_info(gene):
     """Retrieve detailed information for a specific gene from the Open Targets
     Genetics GraphQL API.
@@ -372,7 +370,6 @@ def fetch_gene_info(gene):
             )
         )
 
-
 def convert_variant_id(rs_id):
     """Convert an rsID to a variant ID using the Open Targets Genetics GraphQL
     API.
@@ -404,7 +401,6 @@ def convert_variant_id(rs_id):
         raise ValueError("No variants found for the given rsID.")
 
     return variants[0]["id"]
-
 
 def map_variant2genes(variant_id):
     """Retrieve gene information associated with a specific variant from the
@@ -476,7 +472,6 @@ def map_variant2genes(variant_id):
 
     data = response.json().get("data", {}).get("genesForVariant", [])
     return pd.json_normalize(data)
-
 
 def fetch_gwas_coloc(study_id, variant_id):
     """Retrieve GWAS colocalisation data from the Open Targets Genetics GraphQL
@@ -565,7 +560,6 @@ def fetch_gwas_coloc(study_id, variant_id):
 
     data = response_json.get("data", {}).get("gwasColocalisation", [])
     return pd.json_normalize(data) if data else pd.DataFrame()
-
 
 def fetch_gwas_coloc_region(chromosome, start, end):
     """Retrieve GWAS colocalisation data for a specific genomic region from the
@@ -662,7 +656,6 @@ def fetch_gwas_coloc_region(chromosome, start, end):
         print("No data found or error in response")
         return pd.DataFrame()
 
-
 def fetch_gwas_credset(study_id, variant_id):
     """Retrieve GWAS credible set data from the Open Targets Genetics GraphQL
     API.
@@ -742,7 +735,6 @@ def fetch_gwas_credset(study_id, variant_id):
     else:
         print("No data found or error in response")
         return pd.DataFrame()
-
 
 def fetch_gwas_regional(study_id, chromosome, start, end):
     """Retrieve GWAS regional data from the Open Targets Genetics GraphQL API.
@@ -828,7 +820,6 @@ def fetch_gwas_regional(study_id, chromosome, start, end):
     else:
         print("No data found or error in response")
         return pd.DataFrame()
-
 
 def fetch_tagvariant_assoc(variant_id, page_index=0, page_size=20):
     """Retrieve index variants and associated studies for a given tag variant
@@ -927,13 +918,11 @@ def fetch_tagvariant_assoc(variant_id, page_index=0, page_size=20):
         print("No data found or error in response")
         return pd.DataFrame()
 
-
 def extract_score_from_list(lst):
     if lst:
         return lst[0]["score"]
     else:
         return None
-
 
 def fetch_phewas(variant_id):
     """Perform a Phenome-Wide Association Study (PheWAS) for a given variant ID
@@ -1012,7 +1001,6 @@ def fetch_phewas(variant_id):
             return result_df
     else:
         raise ValueError(f"Error in API request: {response.status_code}")
-
 
 def fetch_manhattan_data(study_id, page_index=0, page_size=100):
     """Retrieve Manhattan plot data from the Open Targets Genetics GraphQL API.
@@ -1137,7 +1125,6 @@ def fetch_manhattan_data(study_id, page_index=0, page_size=100):
         print("No data found or error in response")
         return pd.DataFrame()
 
-
 def fetch_overlap_info_btw_studies(study_id, study_ids=None):
     """Retrieve overlap information for a given study compared with a list of
     other studies from the Open Targets Genetics GraphQL API.
@@ -1229,7 +1216,6 @@ Examples
     except requests.exceptions.RequestException as e:
         raise ConnectionError(f"Connection error: {str(e)}")
 
-
 def fetch_qtl_coloc(study_id, variant_id):
     """Retrieve QTL colocalisation data for a specific study and variant from
     the Open Targets Genetics GraphQL API.
@@ -1307,7 +1293,6 @@ def fetch_qtl_coloc(study_id, variant_id):
         return pd.DataFrame(data)
     else:
         raise ValueError(f"Error: {response.status_code}")
-
 
 def fetch_qtl_cred_set(study_id, variant_id, gene, biofeature):
     """Retrieve QTL credible set data for specific study, variant, gene, and
@@ -1408,7 +1393,6 @@ def fetch_qtl_cred_set(study_id, variant_id, gene, biofeature):
     else:
         raise ValueError(f"Error: {response.status_code}")
 
-
 def run_custom_query(variable_list, query, query_name):
     """Send a custom GraphQL query to the Open Targets Genetics GraphQL API.
 
@@ -1466,7 +1450,6 @@ def run_custom_query(variable_list, query, query_name):
             "Connection timeout" if "Timeout was reached" in str(e) else str(e)
         )
         raise ConnectionError(f"Connection error: {error_message}")
-
 
 def fetch_l2g_model_data(genes, l2g=None, pvalue=None, vtype=None):
     """Retrieve studies and lead variants for a list of genes based on the
@@ -1686,7 +1669,6 @@ def fetch_l2g_model_data(genes, l2g=None, pvalue=None, vtype=None):
 
     return l2g_final
 
-
 def fetch_study_info(study_id):
     """Retrieve detailed information for a specific study from the Open Targets
     Genetics GraphQL API.
@@ -1775,7 +1757,6 @@ def fetch_study_info(study_id):
             "Connection timeout" if "Timeout was reached" in str(e) else str(e)
         )
         raise ConnectionError(f"Connection error: {error_message}")
-
 
 def fetch_study_locus2gene(study_id, variant_id):
     """Retrieve Locus2Gene (L2G) table data for a specific study and variant
@@ -1884,7 +1865,6 @@ def fetch_study_locus2gene(study_id, variant_id):
 
     except requests.exceptions.RequestException as e:
         raise ConnectionError(f"Connection error: {str(e)}")
-
 
 def fetch_variants(study_id):
     """Retrieve variant associations for a specific study from the Open Targets
@@ -1997,7 +1977,6 @@ def fetch_variants(study_id):
             raise ValueError(f"Error: {response.status_code}")
     except requests.exceptions.RequestException as e:
         raise ConnectionError(f"Connection error: {str(e)}")
-
 
 def fetch_tag_variants_studies(variant_id, page_index=0, page_size=20):
     """Retrieve tag variants and associated studies for a given index variant
@@ -2126,7 +2105,6 @@ def fetch_tag_variants_studies(variant_id, page_index=0, page_size=20):
     except requests.exceptions.RequestException as e:
         raise ConnectionError(f"Connection error: {str(e)}")
 
-
 def fetch_top_overlapping_studies(study_id, page_index=0, page_size=20):
     """Retrieve the top overlapped studies for a specific study from the Open
     Targets Genetics GraphQL API.
@@ -2231,12 +2209,11 @@ def fetch_top_overlapping_studies(study_id, page_index=0, page_size=20):
     except requests.exceptions.RequestException as e:
         raise ConnectionError(f"Connection error: {str(e)}")
 
-
 def fetch_variant_info(variant_id):
     """Retrieve detailed information for a specific variant from the Open
     Targets Genetics GraphQL API.
 
-    This function queries detailed variant information based on a
+    This function retrieves variant information for a
     given variant ID.
 
     Parameters
