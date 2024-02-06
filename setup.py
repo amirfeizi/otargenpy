@@ -15,8 +15,7 @@ requirements = [
     'pandas',
     'matplotlib',
     'seaborn',
-    'numpy',
-     'fuzzywuzzy>=0.18.0',
+    'numpy'
     # Optionally include 'python-Levenshtein' if you want to speed up fuzzywuzzy
 ]
 
