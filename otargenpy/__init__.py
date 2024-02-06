@@ -11,4 +11,4 @@ __author__ = """Amir Feizi"""
 __email__ = "afeizi@gmail.com"
 __version__ = '0.2.1'
 
-from . import query
+from . import query, otargenpy
