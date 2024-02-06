@@ -2106,7 +2106,7 @@ def fetch_tag_variants_studies(variant_id, page_index=0, page_size=20):
         raise ConnectionError(f"Connection error: {str(e)}")
 
 def fetch_top_overlapping_studies(study_id, page_index=0, page_size=20):
-    """Retrieve the top overlapped studies for a specific study from the Open
+    """This function retrieves the top overlapped studies for a specific study from the Open
     Targets Genetics GraphQL API.
 
     This function performs the same query as `topOverlappedStudies` from the
