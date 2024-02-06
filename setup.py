@@ -46,7 +46,7 @@ setup(
     package_data={'otargenpy': ['docs/*']},
     test_suite='tests',
     tests_require=test_requirements,
-    url='https://github.com/amirfeizi/otargenpy',
+    url='https://github.com/amirfeizi/otargenpy/',
     version='0.1.1',
     zip_safe=False,
 )
