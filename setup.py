@@ -1,52 +1,44 @@
 #!/usr/bin/env python
-
 """The setup script."""
 
 from setuptools import setup, find_packages
 
-with open('README.rst') as readme_file:
-    readme = readme_file.read()
-
-with open('HISTORY.rst') as history_file:
-    history = history_file.read()
-
-requirements = [
-    'requests',
-    'pandas',
-    'matplotlib',
-    'seaborn',
-    'numpy'
-    # Optionally include 'python-Levenshtein' if you want to speed up fuzzywuzzy
-]
-
-test_requirements = ['pytest>=3', ]
+with open("README.md") as f:
+    readme = f.read()
 
 setup(
+    name="otargenpy",
+    version="2.0.1",
     author="Amir Feizi",
-    author_email='afeizi@gmail.com',
-    python_requires='>=3.6',
-    classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
-        'Natural Language :: English',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
+    author_email="afeizi@gmail.com",
+    python_requires=">=3.8",
+    description="Tidy Python interface to the Open Targets Platform GraphQL API",
+    long_description=readme,
+    long_description_content_type="text/markdown",
+    license="MIT",
+    url="https://github.com/amirfeizi/otargenpy/",
+    packages=find_packages(include=["otargenpy", "otargenpy.*"]),
+    install_requires=[
+        "requests",
+        "pandas",
+        "matplotlib",
+        "numpy",
     ],
-    description="Interact seamlessly with Open Target Genetics' GraphQL endpoint to query and retrieve tidy data tables, facilitating the analysis of genetic data",
-    install_requires=requirements,
-    license="MIT license",
-    long_description=readme + '\n\n' + history,
-    include_package_data=True,
-    keywords='otargenpy',
-    name='otargenpy',
-    packages=find_packages(include=['otargenpy', 'otargenpy.*']),
-    package_data={'otargenpy': ['docs/*']},
-    test_suite='tests',
-    tests_require=test_requirements,
-    url='https://github.com/amirfeizi/otargenpy/',
-    version='0.2.2',
+    extras_require={
+        "dev": ["pytest>=7", "flake8"],
+    },
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+    ],
+    keywords="bioinformatics open-targets genetics gwas drug-targets graphql",
     zip_safe=False,
 )
