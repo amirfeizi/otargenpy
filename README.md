@@ -2,6 +2,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/otargenpy)](https://pypi.org/project/otargenpy/)
 [![GitHub stars](https://img.shields.io/github/stars/amirfeizi/otargenpy?style=flat)](https://github.com/amirfeizi/otargenpy/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/amirfeizi/otargenpy/blob/main/examples/quickstart.ipynb)
 
 # otargenpy
 

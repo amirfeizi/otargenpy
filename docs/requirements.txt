@@ -1,0 +1,6 @@
+sphinx
+furo
+requests
+pandas
+matplotlib
+numpy
